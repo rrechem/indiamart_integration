@@ -1,0 +1,90 @@
+{
+ "actions": [],
+ "creation": "2021-07-14 09:26:44.112443",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "query_id",
+  "indiamart_lead_json",
+  "section_break_3",
+  "status",
+  "output",
+  "column_break_6",
+  "created_on",
+  "integration_request"
+ ],
+ "fields": [
+  {
+   "fieldname": "query_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Query ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "indiamart_lead_json",
+   "fieldtype": "Code",
+   "label": "Indiamart Lead Data"
+  },
+  {
+   "default": "Queued",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nQueued\nCompleted\nCancelled\nFailed"
+  },
+  {
+   "fieldname": "output",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Output",
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_on",
+   "fieldtype": "Datetime",
+   "label": "Created On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "integration_request",
+   "fieldtype": "Data",
+   "label": "Integration Request",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2022-06-30 13:23:56.605636",
+ "modified_by": "Administrator",
+ "module": "Indiamart Erpnext Integration",
+ "name": "Indiamart Lead",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

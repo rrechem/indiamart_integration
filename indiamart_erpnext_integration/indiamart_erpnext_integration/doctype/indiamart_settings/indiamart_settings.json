@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "creation": "2021-07-10 11:02:37.606054",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "api_access_detail_section",
+  "enabled",
+  "last_api_call_time",
+  "column_break_2",
+  "glusr_mobile",
+  "glusr_mobile_key",
+  "section_break_4",
+  "default_lead_owner",
+  "default_opportunity_sales_stage",
+  "column_break_5",
+  "direct_lead_source",
+  "buy_lead_source",
+  "call_lead_source"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "Pulls lead every 5 minutes",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break",
+   "label": "Lead Mapping Detail"
+  },
+  {
+   "description": "This is the primary mobile number of your account registered with IndiaMART. This is a mandatory input parameter.",
+   "fieldname": "glusr_mobile",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mobile",
+   "mandatory_depends_on": "enabled",
+   "options": "Phone"
+  },
+  {
+   "description": "Go to seller.indiamart.com->Settings->Account Settings(tab)->Generate Key\nThis is a unique API Key which is received on your primary email. This is also a mandatory input parameter.",
+   "fieldname": "glusr_mobile_key",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "API Key",
+   "mandatory_depends_on": "enabled"
+  },
+  {
+   "description": "It decides the new start time i.e. start time='Last API Call Time' - 5 minutes.\nand  new 'Last API Call Time' will be now time.\nApp sets it automatically. You need not set it",
+   "fieldname": "last_api_call_time",
+   "fieldtype": "Datetime",
+   "label": "Last API Call Time"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break",
+   "label": "<b>Indiamart Query Type Mapping</b>"
+  },
+  {
+   "fieldname": "default_lead_owner",
+   "fieldtype": "Link",
+   "label": "Default Lead Owner",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "QType: W (Direct) ",
+   "fieldname": "direct_lead_source",
+   "fieldtype": "Link",
+   "label": "Direct Lead Source",
+   "options": "Lead Source",
+   "reqd": 1
+  },
+  {
+   "description": "QType: B  (Consumed Buylead)",
+   "fieldname": "buy_lead_source",
+   "fieldtype": "Link",
+   "label": "Buy Lead Source",
+   "options": "Lead Source",
+   "reqd": 1
+  },
+  {
+   "description": "QType: P (CALL)",
+   "fieldname": "call_lead_source",
+   "fieldtype": "Link",
+   "label": "CALL Lead Source",
+   "options": "Lead Source",
+   "reqd": 1
+  },
+  {
+   "description": "When an existing lead is updated, an opportunity gets created based on lead status. \nDefine  default opportunity sales stage for such lead",
+   "fieldname": "default_opportunity_sales_stage",
+   "fieldtype": "Link",
+   "label": "Default Opportunity Sales Stage",
+   "options": "Sales Stage",
+   "reqd": 1
+  },
+  {
+   "fieldname": "api_access_detail_section",
+   "fieldtype": "Section Break",
+   "label": "API Access Detail"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2022-07-02 09:37:08.050179",
+ "modified_by": "Administrator",
+ "module": "Indiamart Erpnext Integration",
+ "name": "Indiamart Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

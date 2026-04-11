@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include indiamart_erpnext_integration *.css
+recursive-include indiamart_erpnext_integration *.csv
+recursive-include indiamart_erpnext_integration *.html
+recursive-include indiamart_erpnext_integration *.ico
+recursive-include indiamart_erpnext_integration *.js
+recursive-include indiamart_erpnext_integration *.json
+recursive-include indiamart_erpnext_integration *.md
+recursive-include indiamart_erpnext_integration *.png
+recursive-include indiamart_erpnext_integration *.py
+recursive-include indiamart_erpnext_integration *.svg
+recursive-include indiamart_erpnext_integration *.txt
+recursive-exclude indiamart_erpnext_integration *.pyc
