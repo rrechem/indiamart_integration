@@ -135,7 +135,7 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 		status='Failed'	
 		# serious error. log it
 		error_message=error_message+'\nIntegration Request ID :'+integration_request.name
-		frappe.log_error(error_message, title=_('Indiamart Error'))	
+		frappe.log_error(title=_('Indiamart Error'), message = error_message)	
 
 	if 	status!='Failed':
 		#  use response_result
