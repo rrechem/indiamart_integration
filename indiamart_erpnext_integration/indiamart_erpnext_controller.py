@@ -144,7 +144,7 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 	if not error_message:
 		status = "Queued"
 	elif (
-		"There are no leads in the given time duration" in error_message
+		"no leads in the given time duration" in error_message
 		or "hit this API once in every 5 minutes" in error_message
 	):
 		frappe.db.set_value("Integration Request",integration_request.name,"status","Cancelled")
