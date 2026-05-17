@@ -109,7 +109,7 @@ doctype_js = {
 # ---------------
 scheduler_events = {
 	"cron": {
-		"0/7 * * * *": [
+		"0/5 * * * *": [
 			"indiamart_erpnext_integration.indiamart_erpnext_controller.auto_pull_indiamart_leads"
 		]
 	}

@@ -54,81 +54,36 @@ def get_indiamart_configuration():
 		}
 	return "disabled"
 
-# def get_indiamart_api_url(indiamart_settings,start_time=None,end_time=None):
-# 	URL_DATETIME_FORMAT = 'd-MMM-yHH:mm:ss'
-# 	# INDIAMART_URL = 'https://mapi.indiamart.com/wservce/enquiry/listing/GLUSR_MOBILE/{0}/GLUSR_MOBILE_KEY/{1}/Start_Time/{2}/End_Time/{3}/'
-# 	INDIAMART_URL = 'https://mapi.indiamart.com/wservce/crm/crmListing/v2/?glusr_crm_key={1}&start_time={2}&end_time={3}'
+def get_indiamart_api_url(indiamart_settings,start_time=None,end_time=None):
+	URL_DATETIME_FORMAT = 'd-MMM-yHH:mm:ss'
+	# INDIAMART_URL = 'https://mapi.indiamart.com/wservce/enquiry/listing/GLUSR_MOBILE/{0}/GLUSR_MOBILE_KEY/{1}/Start_Time/{2}/End_Time/{3}/'
+	INDIAMART_URL = 'https://mapi.indiamart.com/wservce/crm/crmListing/v2/?glusr_crm_key={1}&start_time={2}&end_time={3}'
 
-# 	#  scheduler flow
-# 	if start_time==None:
-# 		# set start time as minus 5 minutes the last api call time
-# 		if indiamart_settings.get('last_api_call_time'):
-# 			start_time=get_datetime(indiamart_settings.get('last_api_call_time')) - datetime.timedelta(minutes=5)
-# 		else:
-# 			# first time, last_api_call_time will be empty
-# 			start_time= now_datetime() - datetime.timedelta(minutes=5)
+	#  scheduler flow
+	if start_time==None:
+		# set start time as minus 5 minutes the last api call time
+		if indiamart_settings.get('last_api_call_time'):
+			start_time=get_datetime(indiamart_settings.get('last_api_call_time')) - datetime.timedelta(minutes=5)
+		else:
+			# first time, last_api_call_time will be empty
+			start_time= now_datetime() - datetime.timedelta(minutes=5)
 
-# 		start_time=format_datetime(start_time,URL_DATETIME_FORMAT)
-# 		now_api_call_time=now_datetime()
-# 		end_time=format_datetime(now_api_call_time,URL_DATETIME_FORMAT)
-# 	# manual pull flow
-# 	else:
-# 		start_time=format_datetime(start_time,URL_DATETIME_FORMAT)
-# 		end_time=format_datetime(end_time,URL_DATETIME_FORMAT)
-# 		# we don't change last call time as it is a manual attempt
-# 		now_api_call_time=indiamart_settings.get('last_api_call_time') or now_datetime()
-# 	#  to do : put in config
-# 	api_url = INDIAMART_URL.format(
-# 				indiamart_settings.get('glusr_mobile'),
-# 				get_decrypted_password('Indiamart Settings','Indiamart Settings','glusr_mobile_key'),
-# 				start_time,
-# 				end_time)
-# 	return api_url,now_api_call_time
-
-def get_indiamart_api_url(indiamart_settings, start_time=None, end_time=None):
-    URL_DATETIME_FORMAT = 'd-MMM-yHH:mm:ss'
-
-    INDIAMART_URL = (
-        "https://mapi.indiamart.com/wservce/crm/crmListing/v2/"
-        "?glusr_crm_key={1}&start_time={2}&end_time={3}"
-    )
-
-    if start_time is None:
-        if indiamart_settings.get("last_api_call_time"):
-            start_time = get_datetime(
-                indiamart_settings.get("last_api_call_time")
-            )
-        else:
-            start_time = now_datetime() - datetime.timedelta(minutes=5)
-
-        start_time = format_datetime(start_time, URL_DATETIME_FORMAT)
-
-        now_api_call_time = now_datetime()
-        end_time = format_datetime(
-            now_api_call_time,
-            URL_DATETIME_FORMAT
-        )
-
-    else:
-        start_time = format_datetime(start_time, URL_DATETIME_FORMAT)
-        end_time = format_datetime(end_time, URL_DATETIME_FORMAT)
-        now_api_call_time = (
-            indiamart_settings.get("last_api_call_time")
-            or now_datetime()
-        )
-
-    api_url = INDIAMART_URL.format(
-        indiamart_settings.get("glusr_mobile"),
-        get_decrypted_password(
-            "Indiamart Settings",
-            "Indiamart Settings",
-            "glusr_mobile_key"
-        ),
-        start_time,
-        end_time
-    )
-
-    return api_url, now_api_call_time
+		start_time=format_datetime(start_time,URL_DATETIME_FORMAT)
+		now_api_call_time=now_datetime()
+		end_time=format_datetime(now_api_call_time,URL_DATETIME_FORMAT)
+	# manual pull flow
+	else:
+		start_time=format_datetime(start_time,URL_DATETIME_FORMAT)
+		end_time=format_datetime(end_time,URL_DATETIME_FORMAT)
+		# we don't change last call time as it is a manual attempt
+		now_api_call_time=indiamart_settings.get('last_api_call_time') or now_datetime()
+	#  to do : put in config
+	api_url = INDIAMART_URL.format(
+				indiamart_settings.get('glusr_mobile'),
+				get_decrypted_password('Indiamart Settings','Indiamart Settings','glusr_mobile_key'),
+				start_time,
+				end_time)
+	return api_url,now_api_call_time
 
 
 
@@ -169,18 +124,37 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 	error_message=response.get('MESSAGE')
 	status=None
 
-	if (not error_message):
-		status='Queued'
-	elif error_message in valid_error_messages:
-		frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Cancelled')
-		frappe.db.set_value('Indiamart Settings','Indiamart Settings', 'last_api_call_time', now_api_call_time)
-		status='Failed'
-	else: 
-		frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Failed')
-		status='Failed'	
-		# serious error. log it
-		error_message=error_message+'\nIntegration Request ID :'+integration_request.name
-		frappe.log_error(title=_('Indiamart Error'), message = error_message)	
+
+	# old code ===============================
+	# if (not error_message):
+	# 	status='Queued'
+	# elif error_message in valid_error_messages:
+	# 	frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Cancelled')
+	# 	frappe.db.set_value('Indiamart Settings','Indiamart Settings', 'last_api_call_time', now_api_call_time)
+	# 	status='Failed'
+	# else:
+	# 	frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Failed')
+	# 	status='Failed'	
+	# 	# serious error. log it
+	# 	error_message=error_message+'\nIntegration Request ID :'+integration_request.name
+	# 	frappe.log_error(title=_('Indiamart Error'), message = error_message)	
+	
+	
+	# new code ===============================
+	if not error_message:
+		status = "Queued"
+	elif (
+		"There are no leads in the given time duration" in error_message
+		or "hit this API once in every 5 minutes" in error_message
+	):
+		frappe.db.set_value("Integration Request",integration_request.name,"status","Cancelled")
+		frappe.db.set_value("Indiamart Settings","Indiamart Settings","last_api_call_time",now_api_call_time)
+		status = "Failed"
+	else:
+		frappe.db.set_value("Integration Request",integration_request.name,"status","Failed")
+		status = "Failed"
+		error_message = (error_message +"\nIntegration Request ID : " +integration_request.name)
+		frappe.log_error(title=_("Indiamart Error"),message=error_message)
 
 	if 	status!='Failed':
 		#  use response_result
