@@ -273,7 +273,6 @@ def make_erpnext_lead_from_inidamart(lead_values,indiamart_lead_name=None):
 							"source":source or '',
 							"organization_lead":organization_lead,
 							"company_name":company_name,
-							"notes":notes_html,
 							"state":state,
 							"country":country ,
 							"city": city or 'Not specified',
