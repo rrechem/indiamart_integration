@@ -272,6 +272,7 @@ def make_erpnext_lead_from_inidamart(lead_values,indiamart_lead_name=None):
 							"mobile_no": mobile_no,
 							"source":source or '',
 							"organization_lead":organization_lead,
+							# "notes":notes_html,
 							"company_name":company_name,
 							"state":state,
 							"country":country ,
@@ -326,10 +327,15 @@ def update_existing_lead(lead_name,lead_values):
 
 			lead=frappe.get_doc('Lead', lead_name)
 			lead.reload()
-			if lead.notes:
-				lead.notes=lead.notes+notes_html
-			else:
-				lead.notes=notes_html
+
+			# new code ==========
+			# lead.append("notes", {"note": notes_html})
+			
+			# old code ==========
+			# if lead.notes:
+			# 	lead.notes=lead.notes+notes_html
+			# else:
+			# 	lead.notes=notes_html
 			lead.query_id_cf=lead_values.get('UNIQUE_QUERY_ID')
 			lead.status='Lead'
 			lead.flags.ignore_mandatory = True
