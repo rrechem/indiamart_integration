@@ -31,18 +31,44 @@ def manual_pull_indiamart_leads(start_time,end_time):
 # entry point for scheduler 
 @frappe.whitelist()
 def auto_pull_indiamart_leads():
-	try:
-		indiamart_settings=get_indiamart_configuration()
-		if indiamart_settings!='disabled':
-			api_url,now_api_call_time=get_indiamart_api_url(indiamart_settings)
-			if api_url:
-				fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
-	except Exception as e:
-		title=_('Indiamart Error')
-		seperator = "--" * 50
-		error = "\n".join([format_datetime(now_datetime(),'d-MMM-y  HH:mm:ss'), "auto_pull_indiamart_leads",str(sys.exc_info()[1]), seperator,frappe.get_traceback()])
-		frappe.log_error(message=error, title=title)
+	
+	# new code with queue ==============================
+	frappe.enqueue(
+		"indiamart_erpnext_integration.indiamart_erpnext_controller.fetch_indiamart_job",
+		queue="long",
+		timeout=2000
+	)
+	# ==============================================
 
+	# old code without queue ==========================
+	# try:
+	# 	indiamart_settings=get_indiamart_configuration()
+	# 	if indiamart_settings!='disabled':
+	# 		api_url,now_api_call_time=get_indiamart_api_url(indiamart_settings)
+	# 		if api_url:
+	# 			fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
+	# except Exception as e:
+	# 	title=_('Indiamart Error')
+	# 	seperator = "--" * 50
+	# 	error = "\n".join([format_datetime(now_datetime(),'d-MMM-y  HH:mm:ss'), "auto_pull_indiamart_leads",str(sys.exc_info()[1]), seperator,frappe.get_traceback()])
+	# 	frappe.log_error(message=error, title=title)
+	# ===============================================
+
+# added new function ================================
+def fetch_indiamart_job():
+    indiamart_settings=get_indiamart_configuration()
+
+    if indiamart_settings!='disabled':
+        api_url,now_api_call_time=get_indiamart_api_url(
+            indiamart_settings
+        )
+
+        if api_url:
+            fetch_indiamart_data_and_make_integration_request(
+                api_url,
+                now_api_call_time
+            )
+# ==================================================
 
 def get_indiamart_configuration():
 	if frappe.db.get_single_value("Indiamart Settings", "enabled"):
@@ -163,7 +189,21 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 				for key in response_result[index]:
 						lead_values.update({key:response_result[index][key]})
 				# make_lead_from_inidamart(lead_values)
-				make_indiamart_lead_records(lead_values,integration_request.name)
+
+				# old code without queue ==========================
+				# make_indiamart_lead_records(lead_values,integration_request.name)
+				# ===============================================
+
+				# new code with queue ==========================
+				frappe.enqueue(
+					method=make_indiamart_lead_records,
+					queue='long',
+					timeout=1500,
+					lead_values=lead_values,
+					integration_request=integration_request.name
+				)
+				# ===============================================
+
 		frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Completed')
 		frappe.db.set_value('Indiamart Settings','Indiamart Settings', 'last_api_call_time', now_api_call_time)
 	return
