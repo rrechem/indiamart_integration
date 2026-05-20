@@ -31,44 +31,18 @@ def manual_pull_indiamart_leads(start_time,end_time):
 # entry point for scheduler 
 @frappe.whitelist()
 def auto_pull_indiamart_leads():
-	
-	# new code with queue ==============================
-	frappe.enqueue(
-		"indiamart_erpnext_integration.indiamart_erpnext_controller.fetch_indiamart_job",
-		queue="long",
-		timeout=2000
-	)
-	# ==============================================
+	try:
+		indiamart_settings=get_indiamart_configuration()
+		if indiamart_settings!='disabled':
+			api_url,now_api_call_time=get_indiamart_api_url(indiamart_settings)
+			if api_url:
+				fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
+	except Exception as e:
+		title=_('Indiamart Error')
+		seperator = "--" * 50
+		error = "\n".join([format_datetime(now_datetime(),'d-MMM-y  HH:mm:ss'), "auto_pull_indiamart_leads",str(sys.exc_info()[1]), seperator,frappe.get_traceback()])
+		frappe.log_error(message=error, title=title)
 
-	# old code without queue ==========================
-	# try:
-	# 	indiamart_settings=get_indiamart_configuration()
-	# 	if indiamart_settings!='disabled':
-	# 		api_url,now_api_call_time=get_indiamart_api_url(indiamart_settings)
-	# 		if api_url:
-	# 			fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
-	# except Exception as e:
-	# 	title=_('Indiamart Error')
-	# 	seperator = "--" * 50
-	# 	error = "\n".join([format_datetime(now_datetime(),'d-MMM-y  HH:mm:ss'), "auto_pull_indiamart_leads",str(sys.exc_info()[1]), seperator,frappe.get_traceback()])
-	# 	frappe.log_error(message=error, title=title)
-	# ===============================================
-
-# added new function ================================
-def fetch_indiamart_job():
-    import time
-    last_call = frappe.db.get_single_value('Indiamart Settings', 'last_api_call_time')
-    if last_call:
-        elapsed = (now_datetime() - get_datetime(last_call)).total_seconds()
-        wait_time = 300 - elapsed
-        if wait_time > 0:
-            time.sleep(wait_time)
-    indiamart_settings = get_indiamart_configuration()
-    if indiamart_settings != 'disabled':
-        api_url, now_api_call_time = get_indiamart_api_url(indiamart_settings)
-        if api_url:
-            fetch_indiamart_data_and_make_integration_request(api_url, now_api_call_time)
-# ==================================================
 
 def get_indiamart_configuration():
 	if frappe.db.get_single_value("Indiamart Settings", "enabled"):
@@ -111,27 +85,13 @@ def get_indiamart_api_url(indiamart_settings,start_time=None,end_time=None):
 				end_time)
 	return api_url,now_api_call_time
 
-
-
+from frappe.utils.background_jobs import enqueue
 def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time):
 	valid_error_messages=['There are no leads in the given time duration. Please try for a different duration.',
 												'It is advised to hit this API once in every 5 minutes, but it seems that you have crossed this limit. Please try again after 5 minutes.']
-	# v2
+    # v2
 	#  response={'CODE': 200, 'STATUS': 'SUCCESS', 'MESSAGE': '', 'TOTAL_RECORDS': 2, 'RESPONSE': [{'UNIQUE_QUERY_ID': '2243859917', 'QUERY_TYPE': 'W', 'QUERY_TIME': '2022-09-17 09:34:45', 'SENDER_NAME': 'Shuaib', 'SENDER_MOBILE': '+91-8384869226', 'SENDER_EMAIL': '', 'SENDER_COMPANY': '', 'SENDER_ADDRESS': 'Dehradun, Uttarakhand', 'SENDER_CITY': 'Dehradun', 'SENDER_STATE': 'Uttarakhand', 'SENDER_COUNTRY_ISO': 'IN', 'SENDER_MOBILE_ALT': '', 'SENDER_PHONE': '', 'SENDER_PHONE_ALT': '', 'SENDER_EMAIL_ALT': '', 'QUERY_PRODUCT_NAME': 'Fuel Pressure Regulator Sensor', 'QUERY_MESSAGE': 'I want to buy Fuel Pressure Regulator Sensor.\r\rBefore purchasing I would like to know the price details.\r\rKindly send me price and other details.<br> Quantity :   1<br> Quantity Unit :   piece<br> Probable Order Value :   Rs. 3,000 to 10,000<br> Probable Requirement Type :   Business Use<br>Preferred Location: Suppliers from Local Area will be Preferred<br>', 'CALL_DURATION': '', 'RECEIVER_MOBILE': ''}, {'UNIQUE_QUERY_ID': '2243945858', 'QUERY_TYPE': 'W', 'QUERY_TIME': '2022-09-17 10:56:07', 'SENDER_NAME': 'Mamilla Ganga Shekhar', 'SENDER_MOBILE': '+91-9100843314', 'SENDER_EMAIL': 'gangadharmamilla@gmail.com', 'SENDER_COMPANY': 'VS Automation', 'SENDER_ADDRESS': 'KTR Colony, Hyderabad, Telangana,         500072', 'SENDER_CITY': 'Hyderabad', 'SENDER_STATE': 'Telangana', 'SENDER_COUNTRY_ISO': 'IN', 'SENDER_MOBILE_ALT': '', 'SENDER_PHONE': '', 'SENDER_PHONE_ALT': '', 'SENDER_EMAIL_ALT': '', 'QUERY_PRODUCT_NAME': 'Capacitive Proximity Sensors', 'QUERY_MESSAGE': 'I want to buy Capacitive Proximity Sensors.<br> Model :   Prk3pl1.btt3x4t<br> Quantity :   6<br> Quantity Unit :   piece<br> Sensing Distance :   0-0.3 Meter<br> Probable Order Value :   Rs. 3,000 to 10,000<br> Probable Requirement Type :   Business Use<br>Preferred Location: Suppliers from all over India can contact<br>', 'CALL_DURATION': '', 'RECEIVER_MOBILE': ''}]}
-	# response = make_post_request(api_url)
-	try:
-		response = make_post_request(api_url)
-	except Exception as e:
-		if '429' in str(e):
-			# Retry after 5 minutes
-			frappe.enqueue(
-				"indiamart_erpnext_integration.indiamart_erpnext_controller.fetch_indiamart_job",
-				queue="long",
-				timeout=2000,
-				enqueue_after_commit=True
-			)
-			return
-		raise
+	response = make_post_request(api_url)
 	if not response:
 		return
 
@@ -177,7 +137,8 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 	# 	# serious error. log it
 	# 	error_message=error_message+'\nIntegration Request ID :'+integration_request.name
 	# 	frappe.log_error(title=_('Indiamart Error'), message = error_message)	
-
+	
+	
 	# new code ===============================
 	if not error_message:
 		status = "Queued"
@@ -194,31 +155,55 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 		error_message = (error_message +"\nIntegration Request ID : " +integration_request.name)
 		frappe.log_error(title=_("Indiamart Error"),message=error_message)
 
-	if 	status!='Failed':
-		#  use response_result
-		for index in range(len(response_result)):
-				lead_values={}
-				for key in response_result[index]:
-						lead_values.update({key:response_result[index][key]})
-				# make_lead_from_inidamart(lead_values)
+	# if 	status!='Failed':
+	# 	#  use response_result
+	# 	for index in range(len(response_result)):
+	# 			lead_values={}
+	# 			for key in response_result[index]:
+	# 					lead_values.update({key:response_result[index][key]})
+	# 			# make_lead_from_inidamart(lead_values)
+	# 			make_indiamart_lead_records(lead_values,integration_request.name)
+	# 	frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Completed')
+	# 	frappe.db.set_value('Indiamart Settings','Indiamart Settings', 'last_api_call_time', now_api_call_time)
+	# return
+	if status != 'Failed':
+		for lead_values in response_result:
 
-				# old code without queue ==========================
-				# make_indiamart_lead_records(lead_values,integration_request.name)
-				# ===============================================
+			enqueue(
+				method=process_indiamart_lead,
+				queue='long',
+				timeout=300,
+				lead_values=lead_values,
+				integration_request=integration_request.name
+			)
 
-				# new code with queue ==========================
-				frappe.enqueue(
-					method=make_indiamart_lead_records,
-					queue='long',
-					timeout=1500,
-					lead_values=lead_values,
-					integration_request=integration_request.name
-				)
-				# ===============================================
+		frappe.db.set_value(
+			'Integration Request',
+			integration_request.name,
+			'status',
+			'Queued'
+		)
 
-		frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Completed')
-		frappe.db.set_value('Indiamart Settings','Indiamart Settings', 'last_api_call_time', now_api_call_time)
+		frappe.db.set_value(
+			'Indiamart Settings',
+			'Indiamart Settings',
+			'last_api_call_time',
+			now_api_call_time
+		)
+
 	return
+
+def process_indiamart_lead(lead_values, integration_request):
+    try:
+        make_indiamart_lead_records(
+            lead_values,
+            integration_request
+        )
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Lead Processing Error"
+        )
 
 def make_indiamart_lead_records(lead_values,integration_request,status='Queued',output='Not Processed'):
 	existing_indiamart_lead = frappe.db.get_value("Indiamart Lead", {"query_id": lead_values.get('UNIQUE_QUERY_ID')})
