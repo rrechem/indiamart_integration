@@ -11,6 +11,7 @@ import json
 from six import string_types
 import traceback,sys
 from erpnext.crm.doctype.lead.lead import make_opportunity
+from frappe.utils.background_jobs import enqueue
 
 
 # manually pull leads for given time frame
@@ -85,7 +86,6 @@ def get_indiamart_api_url(indiamart_settings,start_time=None,end_time=None):
 				end_time)
 	return api_url,now_api_call_time
 
-from frappe.utils.background_jobs import enqueue
 def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time):
 	valid_error_messages=['There are no leads in the given time duration. Please try for a different duration.',
 												'It is advised to hit this API once in every 5 minutes, but it seems that you have crossed this limit. Please try again after 5 minutes.']
@@ -155,6 +155,7 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 		error_message = (error_message +"\nIntegration Request ID : " +integration_request.name)
 		frappe.log_error(title=_("Indiamart Error"),message=error_message)
 
+	# old code ===============================
 	# if 	status!='Failed':
 	# 	#  use response_result
 	# 	for index in range(len(response_result)):
@@ -166,9 +167,11 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 	# 	frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Completed')
 	# 	frappe.db.set_value('Indiamart Settings','Indiamart Settings', 'last_api_call_time', now_api_call_time)
 	# return
+	# =========================================
+
+	# added this new code ================================
 	if status != 'Failed':
 		for lead_values in response_result:
-
 			enqueue(
 				method=process_indiamart_lead,
 				queue='long',
@@ -176,23 +179,22 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 				lead_values=lead_values,
 				integration_request=integration_request.name
 			)
-
 		frappe.db.set_value(
 			'Integration Request',
 			integration_request.name,
 			'status',
 			'Queued'
 		)
-
 		frappe.db.set_value(
 			'Indiamart Settings',
 			'Indiamart Settings',
 			'last_api_call_time',
 			now_api_call_time
 		)
-
 	return
+	# =====================================================
 
+# added this new function ================================
 def process_indiamart_lead(lead_values, integration_request):
     try:
         make_indiamart_lead_records(
@@ -204,6 +206,7 @@ def process_indiamart_lead(lead_values, integration_request):
             frappe.get_traceback(),
             "Lead Processing Error"
         )
+# =====================================================
 
 def make_indiamart_lead_records(lead_values,integration_request,status='Queued',output='Not Processed'):
 	existing_indiamart_lead = frappe.db.get_value("Indiamart Lead", {"query_id": lead_values.get('UNIQUE_QUERY_ID')})
