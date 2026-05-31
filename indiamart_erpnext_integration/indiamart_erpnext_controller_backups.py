@@ -170,30 +170,42 @@ def fetch_indiamart_data_and_make_integration_request(api_url,now_api_call_time)
 	# =========================================
 
 	# added this new code ================================
-	# lekin bahut saare jobs ek saath DB connections kholte hain
-	# Solution: throttle karo — har 10 leads ke baad ek delay job lagao
 	if status != 'Failed':
-		for i, lead_values in enumerate(response_result):
+		for lead_values in response_result:
 			enqueue(
 				method=process_indiamart_lead,
 				queue='long',
 				timeout=300,
-				at_front=False,
 				lead_values=lead_values,
 				integration_request=integration_request.name
 			)
-		frappe.db.set_value('Integration Request', integration_request.name, 'status', 'Queued')
-		frappe.db.set_value('Indiamart Settings', 'Indiamart Settings', 'last_api_call_time', now_api_call_time)
+		frappe.db.set_value(
+			'Integration Request',
+			integration_request.name,
+			'status',
+			'Queued'
+		)
+		frappe.db.set_value(
+			'Indiamart Settings',
+			'Indiamart Settings',
+			'last_api_call_time',
+			now_api_call_time
+		)
 	return
 	# =====================================================
 
 # added this new function ================================
 def process_indiamart_lead(lead_values, integration_request):
     try:
-        make_indiamart_lead_records(lead_values, integration_request)
-        frappe.db.commit()
+        make_indiamart_lead_records(
+            lead_values,
+            integration_request
+        )
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "Lead Processing Error")
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Lead Processing Error"
+        )
 # =====================================================
 
 def make_indiamart_lead_records(lead_values,integration_request,status='Queued',output='Not Processed'):
@@ -210,141 +222,132 @@ def make_indiamart_lead_records(lead_values,integration_request,status='Queued',
 	return
 
 
-# Fix 1: source ko pehle None assign karo, aur enqueue mein frappe.db.commit() add karo
-def make_erpnext_lead_from_inidamart(lead_values, indiamart_lead_name=None):
-    try:
-        output = None
-        user = frappe.db.get_single_value('Indiamart Settings', 'default_lead_owner')
-        country = frappe.get_value("Country", {"code": lead_values.get("SENDER_COUNTRY_ISO", "IN").lower()}) or 'India'
-        state = lead_values.get('SENDER_STATE', None)
-        city = lead_values.get('SENDER_CITY', None)
-        email_id = lead_values.get('SENDER_EMAIL', None)
-        mobile_no = lead_values.get('SENDER_MOBILE', None)
+def make_erpnext_lead_from_inidamart(lead_values,indiamart_lead_name=None):
+	try:
+		output=None
+		user=frappe.db.get_single_value('Indiamart Settings', 'default_lead_owner')
+		country=frappe.get_value("Country", {"code": lead_values.get("SENDER_COUNTRY_ISO", "IN").lower()}) or 'India'
+		state=lead_values.get('SENDER_STATE',None)
+		city=lead_values.get('SENDER_CITY',None)
+		email_id=lead_values.get('SENDER_EMAIL',None)
+		mobile_no=lead_values.get('SENDER_MOBILE',None)		
 
-        lead_owner = user
-        lead_name = None
-        lead_name = frappe.db.get_value("Lead", {"query_id_cf": lead_values.get('UNIQUE_QUERY_ID')})
+		lead_owner=user
+		lead_name = None
+		lead_name = frappe.db.get_value("Lead", {"query_id_cf": lead_values.get('UNIQUE_QUERY_ID')})
+		# It is a new lead from indiamart
+		if not lead_name :
+			check_duplicate_mobile_no=mobile_no
+			lead_name = frappe.db.get_value("Lead", {"mobile_no": check_duplicate_mobile_no})
+			#  It is a repeat user having same mobile_no
+			if lead_name:
+				existing_lead_output=update_existing_lead(lead_name,lead_values)
+				output='Duplicate Mobile No: {0}'.format(existing_lead_output)
+				frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
+				frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')			
+				return output
+			# It is may be a fresh lead 
+			elif not lead_name:
+					if email_id and email_id!='':
+						lead_name = frappe.db.get_value("Lead", {"email_id": email_id})
+					# It is a repeat user having same email id
+					if lead_name:
+						existing_lead_output=update_existing_lead(lead_name,lead_values)
+						output='Duplicate Email ID: {0}'.format(existing_lead_output)
+						frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
+						frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')					
+						return output
+					elif not lead_name:
+					# it is finally a fresh lead
+						# source logic 
+						if lead_values.get('QUERY_TYPE') == 'W' :
+							source= frappe.db.get_single_value('Indiamart Settings', 'direct_lead_source')
+						elif lead_values.get('QUERY_TYPE') == 'B' :
+							source= frappe.db.get_single_value('Indiamart Settings', 'buy_lead_source')
+						elif lead_values.get('QUERY_TYPE') == 'P' :
+							source= frappe.db.get_single_value('Indiamart Settings', 'call_lead_source')
+							
+						if lead_values.get('SENDER_COMPANY'):
+							organization_lead=1
+							company_name=lead_values.get('SENDER_COMPANY')
+							address_type='Office'
+							address_title='Work'
+						else:
+							organization_lead=0
+							company_name=None
+							address_type='Personal'
+							address_title='Work'
+						
+						notes_html="<div>Product Name :{0}</div><div>Subject :{1}</div><div>Message :{2}</div><div>Lead Date :{3}</div><div>Alternate EmailID :{4}</div><div>Alternate Mobile :{5}</div><div>India Mart Query ID :{6}</div>" \
+						.format( \
+										frappe.bold(lead_values.get('QUERY_PRODUCT_NAME','Not specified')),
+										frappe.bold(lead_values.get('SUBJECT','Not specified')),
+										frappe.bold(lead_values.get('QUERY_MESSAGE','Not specified')),
+										frappe.bold(lead_values.get('QUERY_TIME','Not specified')),
+										frappe.bold(lead_values.get('EMAIL_ALT','Not specified')),
+										frappe.bold(lead_values.get('MOBILE_ALT','Not specified')),
+										frappe.bold(lead_values.get('UNIQUE_QUERY_ID','Not specified'))
+										)
 
-        if not lead_name:
-            check_duplicate_mobile_no = mobile_no
-            lead_name = frappe.db.get_value("Lead", {"mobile_no": check_duplicate_mobile_no})
+						n  = 140
+						address=lead_values.get('SENDER_ADDRESS')
+						pincode=None
+						address_line1,address_line2=None,None
 
-            if lead_name:
-                existing_lead_output = update_existing_lead(lead_name, lead_values)
-                output = 'Duplicate Mobile No: {0}'.format(existing_lead_output)
-                frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
-                frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')
-                return output
+						if address:
+							# extract pincode
+							for word in address.rsplit():
+								if word.isdigit() and len(word)==6:
+										pincode=int(word)
 
-            elif not lead_name:
-                if email_id and email_id != '':
-                    lead_name = frappe.db.get_value("Lead", {"email_id": email_id})
-
-                if lead_name:
-                    existing_lead_output = update_existing_lead(lead_name, lead_values)
-                    output = 'Duplicate Email ID: {0}'.format(existing_lead_output)
-                    frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
-                    frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')
-                    return output
-
-                elif not lead_name:
-                    # ✅ FIX 1: source ko pehle None set karo
-                    source = None
-                    query_type = lead_values.get('QUERY_TYPE')
-                    if query_type == 'W':
-                        source = frappe.db.get_single_value('Indiamart Settings', 'direct_lead_source')
-                    elif query_type == 'B':
-                        source = frappe.db.get_single_value('Indiamart Settings', 'buy_lead_source')
-                    elif query_type == 'P':
-                        source = frappe.db.get_single_value('Indiamart Settings', 'call_lead_source')
-                    # Agar koi aur QUERY_TYPE aaye (jaise 'D', 'C', etc.)
-                    # toh source = None rahega, aur neeche '' ban jayega — no crash
-
-                    if lead_values.get('SENDER_COMPANY'):
-                        organization_lead = 1
-                        company_name = lead_values.get('SENDER_COMPANY')
-                        address_type = 'Office'
-                        address_title = 'Work'
-                    else:
-                        organization_lead = 0
-                        company_name = None
-                        address_type = 'Personal'
-                        address_title = 'Work'
-
-                    notes_html = "<div>Product Name :{0}</div><div>Subject :{1}</div><div>Message :{2}</div><div>Lead Date :{3}</div><div>Alternate EmailID :{4}</div><div>Alternate Mobile :{5}</div><div>India Mart Query ID :{6}</div>".format(
-                        frappe.bold(lead_values.get('QUERY_PRODUCT_NAME', 'Not specified')),
-                        frappe.bold(lead_values.get('SUBJECT', 'Not specified')),
-                        frappe.bold(lead_values.get('QUERY_MESSAGE', 'Not specified')),
-                        frappe.bold(lead_values.get('QUERY_TIME', 'Not specified')),
-                        frappe.bold(lead_values.get('EMAIL_ALT', 'Not specified')),
-                        frappe.bold(lead_values.get('MOBILE_ALT', 'Not specified')),
-                        frappe.bold(lead_values.get('UNIQUE_QUERY_ID', 'Not specified'))
-                    )
-
-                    n = 140
-                    address = lead_values.get('SENDER_ADDRESS')
-                    pincode = None
-                    address_line1, address_line2 = None, None
-
-                    if address:
-                        for word in address.rsplit():
-                            if word.isdigit() and len(word) == 6:
-                                pincode = int(word)
-
-                        for index in range(0, len(address), n):
-                            if index == 0:
-                                address_line1 = address[index: index + n]
-                            elif index == 1:
-                                address_line2 = address[index: index + n]
-
-                    lead = frappe.new_doc('Lead')
-                    lead_value_dict = {
-                        "lead_name": lead_values.get('SENDER_NAME'),
-                        "email_id": email_id,
-                        "mobile_no": mobile_no,
-                        "source": source or '',
-                        "organization_lead": organization_lead,
-                        "company_name": company_name,
-                        "state": state,
-                        "country": country,
-                        "city": city or 'Not specified',
-                        "query_id_cf": lead_values.get('UNIQUE_QUERY_ID'),
-                        "address_title": address_title or 'Other',
-                        "address_type": address_type or 'Other',
-                        "address_line1": address_line1 or 'Not specified',
-                        "address_line2": address_line2,
-                        "pincode": pincode,
-                        'contact_by': '',
-                        'lead_owner': lead_owner
-                    }
-                    lead.update(lead_value_dict)
-                    lead.flags.ignore_mandatory = True
-                    lead.flags.ignore_permissions = True
-                    lead.save()
-
-                    output = 'Lead {0} is created.'.format(lead.name)
-                    frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
-                    frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')
-                    return output
-
-        else:
-            output = 'Duplicate Query_ID. It is in existing Lead {0}'.format(lead_name)
-            frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
-            frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')
-            return output
-
-    except Exception as e:
-        title = _('Indiamart Error')
-        seperator = "--" * 50
-        error = "\n".join([
-            format_datetime(now_datetime(), 'd-MMM-y  HH:mm:ss'),
-            "make_erpnext_lead_from_inidamart",
-            "indiamart_lead_name  " + str(indiamart_lead_name),
-            str(sys.exc_info()[1]),
-            seperator,
-            frappe.get_traceback()
-        ])
-        frappe.log_error(message=error, title=title)
+							for index in range(0, len(address), n):
+									if index==0:
+										address_line1=address[index : index + n]
+									elif index==1:
+										address_line2=address[index : index + n]
+						lead=frappe.new_doc('Lead')
+						lead_value_dict={
+							"lead_name": lead_values.get('SENDER_NAME'),
+							"email_id":email_id,
+							"mobile_no": mobile_no,
+							"source":source or '',
+							"organization_lead":organization_lead,
+							# "notes":notes_html,
+							"company_name":company_name,
+							"state":state,
+							"country":country ,
+							"city": city or 'Not specified',
+							"query_id_cf":lead_values.get('UNIQUE_QUERY_ID'),
+							"address_title":address_title or 'Other',
+							"address_type":address_type or 'Other',
+							"address_line1":address_line1 or 'Not specified',
+							"address_line2":address_line2,
+							"pincode":pincode,
+							'contact_by':'',
+							'lead_owner':lead_owner
+						}
+						lead.update(lead_value_dict)
+						lead.flags.ignore_mandatory = True
+						lead.flags.ignore_permissions = True
+						lead.save()
+						
+						# update details to indiamart lead doctype
+						output='Lead {0} is created.'.format(lead.name)
+						frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
+						frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')					
+						return output
+				
+		else:
+				# indiamart has send lead with same query id. Almost impossilble
+				output='Duplicate Query_ID. It is in existing Lead {0}'.format(lead_name)
+				frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'output', output)
+				frappe.db.set_value('Indiamart Lead', indiamart_lead_name, 'status', 'Completed')			
+				return output
+	except Exception as e:
+		title=_('Indiamart Error')
+		seperator = "--" * 50
+		error = "\n".join([format_datetime(now_datetime(),'d-MMM-y  HH:mm:ss'), "make_erpnext_lead_from_inidamart","indiamart_lead_name  "+indiamart_lead_name,str(sys.exc_info()[1]), seperator,frappe.get_traceback()])
+		frappe.log_error(message=error, title=title)
 
 def update_existing_lead(lead_name,lead_values):
 		existing_lead_output=None
